@@ -1,6 +1,5 @@
 from typing import Tuple
 from gym import Env, spaces
-from string import Template
 import os, sys
 import numpy as np
 import sumolib

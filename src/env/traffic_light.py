@@ -1,5 +1,4 @@
 import sys, os
-import sumolib
 import traci
 
 # check for SUMO_HOME env
