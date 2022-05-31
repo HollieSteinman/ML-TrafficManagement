@@ -98,7 +98,7 @@ class TrafficLight:
         """
         self.current_phase_dur += 1
         if self.is_yellow() and self.current_phase_dur >= self.yellow_dur:
-            self.sumo.trafficlight.setRedYellowGreenState(self.id, self.green_phases[self.current_phase])
+            self.sumo.trafficlight.setRedYellowGreenState(self.id, self.green_phases[self.current_phase].state)
 
     def can_set(self):
         """
