@@ -1,3 +1,4 @@
+from collections import defaultdict
 import numpy as np
 from tqdm import tqdm
 import csv
@@ -13,7 +14,8 @@ def learn(
     ):
     rewards = []
     state = env.discretise_state(env.reset())
-    q_table = {state: [0 for _ in range(env.action_space.n)]}
+    q_table = defaultdict(lambda: [0 for _ in range(env.action_space.n)])
+    q_table[state] = [0 for _ in range(env.action_space.n)]
     epsilon_decay = (epsilon) / episodes
 
     for e in tqdm(range(episodes)):
@@ -72,11 +74,12 @@ env = TrafficIntersection(
     '/Users/holliesteinman/Documents/Uni/Year4/Sem1/Machine Learning/Assignment 2/src/env/sumo/test/traffic.add.xml',
     gui=False,
     max_dur=2500)
-q_table = learn(env, 0.5, 0.85, 0.8, 1000)
-test(env, q_table)
+q_table = learn(env, 0.5, 0.85, 0.8, 10)
 
 with open('model.csv', 'w') as f:
     writer = csv.writer(f)
 
     for s in q_table:
         writer.writerow(np.array([i for i in s] + q_table[s]))
+
+test(env, q_table)
