@@ -26,6 +26,7 @@ class TrafficIntersection(Env):
     :param route: (str) The path to the route file
     :param add: (str) The path to the additional file
     :param view: (Tuple[int,int]) The dimensions of the GUI view
+    :param max_dur: (int) The max duration of the environment in seconds
     :param action_dur: (int) The duration between actions
     :param yellow_dur: (int) The duration of a yellow phase
     :param green_dur: (int) The minimum duration of a green phase
@@ -38,11 +39,12 @@ class TrafficIntersection(Env):
             route: str,
             add: str,
             view: Tuple[int,int]=[1000,1000],
+            max_dur: int=3600,
             action_dur: int=5,
             yellow_dur: int=3,
             green_dur: int=5,
             delay: int=0,
-            gui: bool=True
+            gui: bool=False
         ):
         # check for gui
         self.gui = gui
@@ -60,6 +62,7 @@ class TrafficIntersection(Env):
 
         # set phase & action lengths
         assert action_dur > yellow_dur
+        self.max_dur = max_dur
         self.action_dur = action_dur
         self.yellow_dur = yellow_dur
         self.green_dur = green_dur
@@ -77,7 +80,8 @@ class TrafficIntersection(Env):
             '-n', self._network, # network file
             '-r', self._route, # route file
             '-a', self._add, # additional file
-            '--random',] # random seed
+            '-b', '0', # start at time 0
+            '--random'] # random seed
 
         # set gui specific args
         if self.gui:
@@ -85,17 +89,13 @@ class TrafficIntersection(Env):
             if self._view is not None:
                 sumo_cmd.extend([
                     '--window-size', f'{self._view[0]},{self._view[1]}', # window size
-                    '-d', self.delay, # delay
+                    '-d', str(self.delay), # delay
                     ])
 
-                
-            
         # start sumo
         traci.start(sumo_cmd)
         self.sumo = traci
         self.sumo_step = 0
-
-        self.sumo.gui.setZoom("View #0", 500)
 
         self.light = TrafficLight('0', self.action_dur, self.yellow_dur, self.green_dur, self.sumo)
         
@@ -116,15 +116,13 @@ class TrafficIntersection(Env):
         # 0-1 for [num green phases], [can change], [num lanes]
         self.observation_space = spaces.Box(
             low=np.zeros(len(self.light.green_phases) + 1 + len(self.lanes), dtype=np.float32),
-            hight=np.ones(len(self.light.green_phases) + 1 + len(self.lanes), dtype=np.float32)
+            high=np.ones(len(self.light.green_phases) + 1 + len(self.lanes), dtype=np.float32)
         )
 
         # adjust gui
         if self.gui:
+            self.sumo.gui.setZoom("View #0", 500)
             self.sumo.gui.setSchema(traci.gui.DEFAULT_VIEW, "standard")
-
-        # step to start SUMO
-        self.sumo.simulation.step()
     
     def stop_sumo(self):
         """
@@ -138,16 +136,16 @@ class TrafficIntersection(Env):
 
     def calculate_observation(self):
         """
-        Calculates observation
+        Calculates observation into continues space of 0 - 1 floats
         """
         # one-hot encode green phases
-        phase = [1 if self.light.current_phase == i else 0 for i in range(len(self.light.green_phases))]
+        action = [1 if self.light.current_phase == i else 0 for i in range(len(self.light.green_phases))]
         # if minimum green phase time has elapsed, lights can be changed
         can_change = [0 if self.light.current_phase_dur > self.light.yellow_dur + self.light.green_dur else 1]
         # each lane's queue (max of MAX_QUEUE)
         queued = [min(1, self.sumo.lane.getLastStepHaltingNumber(l) / MAX_QUEUE) for l in self.lanes]
 
-        return np.array(phase + can_change + queued)
+        return np.array(action + can_change + queued)
         
     def calculate_reward(self):
         """
@@ -175,9 +173,13 @@ class TrafficIntersection(Env):
         """
         self.stop_sumo()
         self.start_sumo()
+        return self.calculate_observation()
 
     def render(self):
-        return;
+        return
+
+    def close(self):
+        self.stop_sumo()
 
     def step_sumo(self):
         """
@@ -212,7 +214,7 @@ class TrafficIntersection(Env):
         # retrieve returns
         obsv = self.calculate_observation()
         reward = self.calculate_reward()
-        done = self.sumo_step >= RUNTIME
+        done = self.sumo_step >= self.max_dur
         info = self.calculate_info(reward)
 
         # shutdown sumo if complete
@@ -221,5 +223,13 @@ class TrafficIntersection(Env):
         
         return obsv, reward, done, info
 
+    def discretise_state(self, state):
+        """
+        Discretises state to [action_index, can_change, lane_0_queue, ..., lane_n_queue] where lane queue is an int 0 - 9
+        """
+        action = int(np.where(state[:len(self.light.green_phases)] == 1)[0]) # convert one-hot encoded index
+        can_change = int(state[len(self.light.green_phases)]) # convert if can change
+        queue = [min(int(q * 10), 9) for q in state[len(self.light.green_phases) + 1:]] # convert queue size to 0-9 int
+        return tuple([action, can_change] + queue)
 
 
