@@ -1,10 +1,10 @@
-from dis import disco
 import numpy as np
 from tqdm import tqdm
+import csv
 
 from env.traffic_intersection import TrafficIntersection
 
-def QLearning(
+def learn(
         env: TrafficIntersection,
         learning,
         discount,
@@ -52,10 +52,31 @@ def QLearning(
 
     return q_table
 
+def test(
+        env: TrafficIntersection,
+        q_table
+    ):
+    state = env.discretise_state(env.reset())
+    done = False
+    avg = 0
+    while not done:
+        action = np.argmax(q_table[state])
+        s, reward, done, info = env.step(action)
+        state = env.discretise_state(s)
+        avg += reward
+    print(f"Final average reward {avg}")
+
 env = TrafficIntersection(
     '/Users/holliesteinman/Documents/Uni/Year4/Sem1/Machine Learning/Assignment 2/src/env/sumo/test/traffic.net.xml',
     '/Users/holliesteinman/Documents/Uni/Year4/Sem1/Machine Learning/Assignment 2/src/env/sumo/test/traffic.rou.xml',
     '/Users/holliesteinman/Documents/Uni/Year4/Sem1/Machine Learning/Assignment 2/src/env/sumo/test/traffic.add.xml',
     gui=False,
     max_dur=2500)
-q_table = QLearning(env, 0.5, 0.85, 0.8, 200)
+q_table = learn(env, 0.5, 0.85, 0.8, 1000)
+test(env, q_table)
+
+with open('model.csv', 'w') as f:
+    writer = csv.writer(f)
+
+    for s in q_table:
+        writer.writerow(np.array([i for i in s] + q_table[s]))
