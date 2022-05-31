@@ -69,7 +69,7 @@ class TrafficIntersection(Env):
 
         self.sumo = None # type: traci
         self.sumo_step = 0
-
+        self.last_waiting = 0.0
     
     def start_sumo(self):
         """
@@ -146,16 +146,34 @@ class TrafficIntersection(Env):
         queued = [min(1, self.sumo.lane.getLastStepHaltingNumber(l) / MAX_QUEUE) for l in self.lanes]
 
         return np.array(action + can_change + queued)
-        
+
     def calculate_reward(self):
         """
         Calculates reward for a step
         """
         # reward = mean speed * total vehicles
-        mean_speed = self.sumo.multientryexit.getLastStepMeanSpeed(self.detector)
-        total_vehicles = self.sumo.multientryexit.getLastStepVehicleNumber(self.detector)
+        # mean_speed = self.sumo.multientryexit.getLastStepMeanSpeed(self.detector)
+        # total_vehicles = self.sumo.multientryexit.getLastStepVehicleNumber(self.detector)
 
-        return max(mean_speed * total_vehicles, 0)
+        # return max(mean_speed * total_vehicles, 0)
+
+        # reward = average speed
+        avg = 0
+        vehicles = []
+        # retrieve all vehicles
+        for l in self.lanes:
+            vehicles += self.sumo.lane.getLastStepVehicleIDs(l)
+        
+        # if no vehicles, return 1
+        if len(vehicles) <= 0:
+            return 1.0
+        
+        # add each vehicle speed / max speed
+        for veh in vehicles:
+            avg += self.sumo.vehicle.getSpeed(veh) / self.sumo.vehicle.getMaxSpeed(veh)
+        
+        # return average speed / num vehicles
+        return avg / len(vehicles)
 
     def calculate_info(self, reward):
         """
