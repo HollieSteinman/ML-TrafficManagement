@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2022-05-31 11:39:05 by Eclipse SUMO GUI Version 1.13.0
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="/Users/holliesteinman/Documents/Uni/Year4/Sem1/Machine%20Learning/Assignment%202/src/env/sumo/test/traffic.net.xml"/>
+        <route-files value="/Users/holliesteinman/Documents/Uni/Year4/Sem1/Machine%20Learning/Assignment%202/src/env/sumo/test/traffic.rou.xml"/>
+        <additional-files value="/Users/holliesteinman/Documents/Uni/Year4/Sem1/Machine%20Learning/Assignment%202/src/env/sumo/test/traffic.add.xml"/>
+    </input>
+
+    <report>
+        <log value="log.txt"/>
+    </report>
+
+    <traci_server>
+        <remote-port value="50369"/>
+    </traci_server>
+
+    <random_number>
+        <random value="true"/>
+    </random_number>
+
+    <gui_only>
+        <quit-on-end value="true"/>
+        <start value="true"/>
+        <delay value="60"/>
+        <window-size value="1000,1000"/>
+    </gui_only>
+
+</configuration>
