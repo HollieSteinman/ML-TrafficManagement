@@ -19,7 +19,8 @@ def learn(
     state = env.discretise_state(env.reset())
     q_table = defaultdict(lambda: [0 for _ in range(env.action_space.n)])
     q_table[state] = [0 for _ in range(env.action_space.n)]
-    epsilon_decay = epsilon / (episodes / 2)
+    stop_decay = episodes / 2
+    epsilon_decay = epsilon / stop_decay
 
     for e in tqdm(range(episodes)):
         done = False
@@ -27,7 +28,7 @@ def learn(
         state = env.discretise_state(env.reset())
 
         while not done:
-            if np.random.random() < 1 - epsilon:
+            if np.random.random() > epsilon:
                 action = np.argmax(q_table[state])
             else:
                 action = int(env.action_space.sample())
@@ -38,13 +39,13 @@ def learn(
             if next_state not in q_table:
                 q_table[next_state] = [0 for _ in range(env.action_space.n)]
             
-            q_table[state][action] = q_table[state][action] + learning*(reward +
-                discount*max(q_table[next_state]) - q_table[state][action])
+            q_table[state][action] = (1-learning) * q_table[state][action] + learning*(reward +
+                discount*max(q_table[next_state]))
             
             state = next_state
             total_reward += reward
         
-        if epsilon > 0:
+        if epsilon > 0 and episodes < stop_decay:
             epsilon -= epsilon_decay
         
         rewards.append(total_reward)
@@ -94,11 +95,14 @@ def load(env: TrafficIntersection):
         
         return q_table
 
-def plot(rewards):
-    plt.plot(rewards['ep'], rewards['avg'], label="average rewards")
-    plt.plot(rewards['ep'], rewards['max'], label="max rewards")
-    plt.plot(rewards['ep'], rewards['min'], label="min rewards")
+def plot(rewards, episodes):
+    plt.plot(rewards['ep'], rewards['avg'], label="Average")
+    plt.plot(rewards['ep'], rewards['max'], label="Max")
+    plt.plot(rewards['ep'], rewards['min'], label="Min")
     plt.legend(loc=4)
+    plt.ylabel("Episodes")
+    plt.xlabel("Reward")
+    plt.title(f"Rewards for {episodes} episodes")
     plt.grid(True)
     plt.show()
 
@@ -109,8 +113,9 @@ env = TrafficIntersection(
     gui=False,
     max_dur=2500)
 
-q_table, rewards = learn(env, 0.1, 0.95, 1, 200)
-plot(rewards)
+episodes = 100
+q_table, rewards = learn(env, 0.1, 0.95, 1, episodes)
+plot(rewards, episodes)
 test(env, q_table)
 
 #q_table = load(env)
