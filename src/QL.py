@@ -6,6 +6,9 @@ import csv
 
 from env.traffic_intersection import TrafficIntersection
 
+EVALUATION = True
+PROJECT_PATH = '/Users/holliesteinman/Documents/Uni/Year4/Sem1/Machine Learning/Assignment 2/'
+
 def learn(
         env: TrafficIntersection,
         learning: float=0.1,
@@ -126,29 +129,28 @@ def plot(rewards, episodes):
     plt.grid(True)
     plt.show()
 
-# env = TrafficIntersection(
-#     '/Users/holliesteinman/Documents/Uni/Year4/Sem1/Machine Learning/Assignment 2/src/env/sumo/test/traffic.net.xml',
-#     '/Users/holliesteinman/Documents/Uni/Year4/Sem1/Machine Learning/Assignment 2/src/env/sumo/test/traffic.rou.xml',
-#     '/Users/holliesteinman/Documents/Uni/Year4/Sem1/Machine Learning/Assignment 2/src/env/sumo/test/traffic.add.xml',
-#     gui=False,
-#     max_dur=500,
-#     action_dur=6,
-#     yellow_dur=5,
-#     green_dur=10)
-
-env = TrafficIntersection(
-    '/Users/holliesteinman/Documents/Uni/Year4/Sem1/Machine Learning/Assignment 2/src/env/sumo/real/traffic.net.xml',
-    '/Users/holliesteinman/Documents/Uni/Year4/Sem1/Machine Learning/Assignment 2/src/env/sumo/real/traffic.rou.xml',
-    '/Users/holliesteinman/Documents/Uni/Year4/Sem1/Machine Learning/Assignment 2/src/env/sumo/real/traffic.add.xml',
-    gui=False,
-    max_dur=500,
-    action_dur=6,
-    yellow_dur=5,
-    green_dur=10)
+if not EVALUATION:
+    env = TrafficIntersection(
+        PROJECT_PATH + 'src/env/sumo/test/traffic.net.xml',
+        PROJECT_PATH + 'src/env/sumo/test/traffic.rou.xml',
+        PROJECT_PATH + 'src/env/sumo/test/traffic.add.xml',
+        gui=False,
+        max_dur=500,
+        action_dur=6,
+        yellow_dur=5,
+        green_dur=10)
+else:
+    env = TrafficIntersection(
+        PROJECT_PATH + 'src/env/sumo/real/traffic.net.xml',
+        PROJECT_PATH + 'src/env/sumo/real/traffic.rou.xml',
+        PROJECT_PATH + 'src/env/sumo/real/traffic.add.xml',
+        gui=False,
+        max_dur=500,
+        action_dur=6,
+        yellow_dur=5,
+        green_dur=10)
 
 episodes = 1000
 q_table, rewards = learn(env, 0.1, 0.95, 1,  0.75, episodes)
 plot(rewards, episodes)
 test(env, q_table, 10)
-
-#q_table = load(env)
