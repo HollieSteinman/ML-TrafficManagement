@@ -84,9 +84,6 @@ class TrafficIntersection(Env):
         # set controlled lanes
         self.controlled_lanes = self.sumo.trafficlight.getControlledLanes(self.light.id)
 
-        # get detector
-        self.detector = self.sumo.multientryexit.getIDList()[0]
-
         # action space is all green phases
         self.action_space = spaces.Discrete(len(self.light.green_phases))
 
