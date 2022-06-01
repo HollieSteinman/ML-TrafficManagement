@@ -9,7 +9,7 @@ import traci.constants as tc
 from env.traffic_light import TrafficLight
 
 TEMP_ROUTE = "tmp.rou.xml"
-MAX_QUEUE = 50
+MAX_QUEUE = 20
 
 # check for SUMO_HOME env
 if 'SUMO_HOME' in os.environ:
@@ -67,6 +67,37 @@ class TrafficIntersection(Env):
         self.yellow_dur = yellow_dur
         self.green_dur = green_dur
 
+        traci.start([sumolib.checkBinary('sumo'), '-n', self._network, # network file
+            '-r', self._route, # route file
+            '-a', self._add, # additional file
+            ])
+        self.sumo = traci
+        self.light = TrafficLight('0', self.action_dur, self.yellow_dur, self.green_dur, self.sumo)
+        
+        # set lanes
+        all_lanes = self.sumo.lane.getIDList()
+        self.lanes = []
+        for lane in all_lanes:
+            if ':' not in lane:
+                self.lanes.append(lane)
+
+        # set controlled lanes
+        self.controlled_lanes = self.sumo.trafficlight.getControlledLanes(self.light.id)
+
+        # get detector
+        self.detector = self.sumo.multientryexit.getIDList()[0]
+
+        # action space is all green phases
+        self.action_space = spaces.Discrete(len(self.light.green_phases))
+
+        # set observation space
+        # 0-1 for [num green phases], [can change], [num lanes]
+        self.observation_space = spaces.Box(
+            low=np.zeros(len(self.light.green_phases) + 1 + len(self.controlled_lanes), dtype=np.float32),
+            high=np.ones(len(self.light.green_phases) + 1 + len(self.controlled_lanes), dtype=np.float32)
+        )
+
+        self.sumo.close()
         self.sumo = None # type: traci
         self.sumo_step = 0
         self.last_waiting = 0.0
@@ -98,29 +129,6 @@ class TrafficIntersection(Env):
         self.sumo_step = 0
 
         self.light = TrafficLight('0', self.action_dur, self.yellow_dur, self.green_dur, self.sumo)
-        
-        # set lanes
-        all_lanes = self.sumo.lane.getIDList()
-        self.lanes = []
-        for lane in all_lanes:
-            if ':' not in lane:
-                self.lanes.append(lane)
-
-        # set controlled lanes
-        self.controlled_lanes = self.sumo.trafficlight.getControlledLanes(self.light.id)
-
-        # get detector
-        self.detector = self.sumo.multientryexit.getIDList()[0]
-
-        # action space is all green phases
-        self.action_space = spaces.Discrete(len(self.light.green_phases))
-
-        # set observation space
-        # 0-1 for [num green phases], [can change], [num lanes]
-        self.observation_space = spaces.Box(
-            low=np.zeros(len(self.light.green_phases) + 1 + len(self.controlled_lanes), dtype=np.float32),
-            high=np.ones(len(self.light.green_phases) + 1 + len(self.controlled_lanes), dtype=np.float32)
-        )
 
         # adjust gui
         if self.gui:
