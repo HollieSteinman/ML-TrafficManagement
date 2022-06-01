@@ -106,6 +106,9 @@ class TrafficIntersection(Env):
             if ':' not in lane:
                 self.lanes.append(lane)
 
+        # set controlled lanes
+        self.controlled_lanes = self.sumo.trafficlight.getControlledLanes(self.light.id)
+
         # get detector
         self.detector = self.sumo.multientryexit.getIDList()[0]
 
@@ -115,8 +118,8 @@ class TrafficIntersection(Env):
         # set observation space
         # 0-1 for [num green phases], [can change], [num lanes]
         self.observation_space = spaces.Box(
-            low=np.zeros(len(self.light.green_phases) + 1 + len(self.lanes), dtype=np.float32),
-            high=np.ones(len(self.light.green_phases) + 1 + len(self.lanes), dtype=np.float32)
+            low=np.zeros(len(self.light.green_phases) + 1 + len(self.controlled_lanes), dtype=np.float32),
+            high=np.ones(len(self.light.green_phases) + 1 + len(self.controlled_lanes), dtype=np.float32)
         )
 
         # adjust gui
@@ -134,6 +137,9 @@ class TrafficIntersection(Env):
         traci.close()
         self.sumo = None
 
+    def get_runtime(self):
+        return self.sumo.simulation.getTime()
+
     def calculate_observation(self):
         """
         Calculates observation into continues space of 0 - 1 floats
@@ -143,7 +149,7 @@ class TrafficIntersection(Env):
         # if minimum green phase time has elapsed, lights can be changed
         can_change = [0 if self.light.current_phase_dur > self.light.yellow_dur + self.light.green_dur else 1]
         # each lane's queue (max of MAX_QUEUE)
-        queued = [min(1, self.sumo.lane.getLastStepHaltingNumber(l) / MAX_QUEUE) for l in self.lanes]
+        queued = [min(1, self.sumo.lane.getLastStepHaltingNumber(l) / MAX_QUEUE) for l in self.controlled_lanes]
 
         return np.array(action + can_change + queued)
 
@@ -182,7 +188,7 @@ class TrafficIntersection(Env):
         return {
             'sumo_step': self.sumo_step,
             'reward': reward,
-            'total_queued': sum(self.sumo.lane.getLastStepHaltingNumber(l) for l in self.lanes)
+            'total_queued': sum(self.sumo.lane.getLastStepHaltingNumber(l) for l in self.controlled_lanes)
         }
 
     def reset(self):
@@ -232,7 +238,7 @@ class TrafficIntersection(Env):
         # retrieve returns
         obsv = self.calculate_observation()
         reward = self.calculate_reward()
-        done = self.sumo_step >= self.max_dur
+        done = self.get_runtime() > self.max_dur
         info = self.calculate_info(reward)
 
         # shutdown sumo if complete
